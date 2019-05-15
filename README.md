@@ -1,0 +1,3 @@
+# WollBot
+
+My discord bot :)
