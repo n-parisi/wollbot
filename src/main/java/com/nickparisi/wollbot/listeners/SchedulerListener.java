@@ -1,39 +1,44 @@
 package com.nickparisi.wollbot.listeners;
 
+import com.nickparisi.wollbot.commands.MessageCommand;
+import com.nickparisi.wollbot.service.SchedulerService;
 import net.dv8tion.jda.api.entities.ChannelType;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class SchedulerListener extends ListenerAdapter {
 
-  List<User> participants = new ArrayList<>();
+  private static final String PREFIX = "scheduler";
+
+  private Map<String, MessageCommand> commands;
+  private SchedulerService service;
+
+  public SchedulerListener() {
+    service = new SchedulerService();
+    commands = new HashMap<>();
+
+    commands.put("add", service::add);
+    commands.put("status", service::status);
+    commands.put("ping", service::ping);
+  }
+
 
   @Override
   public void onMessageReceived(MessageReceivedEvent event) {
     if (event.isFromType(ChannelType.TEXT)) {
       Message message = event.getMessage();
-      String messageContents = message.getContentDisplay();
+      String[] messageContents = message.getContentDisplay().split(" ");
 
-      if (messageContents.startsWith("!wolladd")) {
-        message.getMentionedUsers().forEach(user -> participants.add(user));
-      }
+      if (messageContents[0].equals("!" + PREFIX)) {
+        String command = messageContents[1];
 
-      if (messageContents.startsWith("!wollstatus")) {
-        StringBuffer sb = new StringBuffer();
-        sb.append("Currently aware of these users: " + System.lineSeparator());
-        participants.forEach(user -> sb.append(user.getAsMention() + System.lineSeparator()));
-        message.getChannel().sendMessage(sb.toString()).queue();
-      }
-
-      if (messageContents.startsWith("!wollannoy")) {
-        participants.forEach(user -> {
-          user.openPrivateChannel().queue(channel -> channel.sendMessage("Hello from a bot!").queue());
-        });
+        if (commands.containsKey(command)) {
+          commands.get(command).process(message);
+        }
       }
     }
 
