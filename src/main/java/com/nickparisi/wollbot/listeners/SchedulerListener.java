@@ -21,9 +21,10 @@ public class SchedulerListener extends ListenerAdapter {
     service = new SchedulerService();
     commands = new HashMap<>();
 
-    commands.put("add", service::add);
-    commands.put("status", service::status);
-    commands.put("ping", service::ping);
+    commands.put("add", service::addParticipants);
+    commands.put("status", service::printStatus);
+    commands.put("ping", service::pingParticipants);
+    commands.put("new", service::newEvent);
   }
 
 
