@@ -1,11 +1,15 @@
 package com.nickparisi.wollbot.service;
 
+import com.nickparisi.wollbot.listeners.YesNoPromptListener;
+import com.nickparisi.wollbot.utils.UserUtils;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class SchedulerService {
@@ -13,7 +17,8 @@ public class SchedulerService {
   private static DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd-yyyy h:mma");
 
   private Set<User> participants = new HashSet<>();
-  private String event;
+  private Map<User, Boolean> participantStatus = new HashMap<>();
+  private String event = "";
   private LocalDateTime eventDateTime;
 
   /*
@@ -41,15 +46,32 @@ public class SchedulerService {
     participants.addAll(message.getMentionedUsers());
   }
 
+  public void promptParticipants(Message message) {
+    if (isAdmin(message.getAuthor())) {
+      for (User participant : participants) {
+        participantStatus.put(participant, false);
+        UserUtils.sendPrivateMessage(participant, "Please answer this message yes or no to confirm your status.");
+        new YesNoPromptListener(participant, this::promptCallback);
+      }
+    }
+  }
+
   public void printStatus(Message message) {
     StringBuffer sb = new StringBuffer();
 
     sb.append("Current Event: " + System.lineSeparator());
-    sb.append(event + System.lineSeparator());
-    sb.append(eventDateTime.toString() + System.lineSeparator() + System.lineSeparator());
-    sb.append("Participants: " + System.lineSeparator());
+    if (!event.equals("")) {
+      sb.append(event + System.lineSeparator());
+      sb.append(eventDateTime.toString() + System.lineSeparator() + System.lineSeparator());
+      sb.append("Participants: " + System.lineSeparator());
+    }
     for (User participant : participants) {
-      sb.append(participant.getAsMention() + System.lineSeparator());
+      sb.append(participant.getAsMention());
+      if (participantStatus.containsKey(participant)) {
+        String status = participantStatus.get(participant) ? "Confirmed" : "Not Confirmed";
+        sb.append("      (" + status + ")");
+      }
+      sb.append(System.lineSeparator());
     }
     message.getChannel().sendMessage(sb.toString()).queue();
   }
@@ -59,9 +81,18 @@ public class SchedulerService {
       message.getChannel().sendMessage("Pinging all participants");
 
       for (User user : participants) {
-        user.openPrivateChannel().queue(channel -> channel.sendMessage("Hello from a bot!").queue());
+        UserUtils.sendPrivateMessage(user, "Hello from a bot!");
       }
     }
+  }
+
+  /*
+  Callbacks
+   */
+
+  private void promptCallback(User user, Boolean value) {
+    participantStatus.put(user, value);
+    UserUtils.sendPrivateMessage(user, "Thank you for your response!");
   }
 
   /*
