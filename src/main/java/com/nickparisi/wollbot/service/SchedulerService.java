@@ -1,6 +1,7 @@
 package com.nickparisi.wollbot.service;
 
 import com.nickparisi.wollbot.listeners.YesNoPromptListener;
+import com.nickparisi.wollbot.utils.BotConstants;
 import com.nickparisi.wollbot.utils.UserUtils;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
@@ -13,7 +14,6 @@ import java.util.Map;
 import java.util.Set;
 
 public class SchedulerService {
-  private static final String ADMIN ="woll smoth#4824";
   private static DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd-yyyy h:mma");
 
   private Set<User> participants = new HashSet<>();
@@ -50,8 +50,10 @@ public class SchedulerService {
     if (isAdmin(message.getAuthor())) {
       for (User participant : participants) {
         participantStatus.put(participant, false);
-        UserUtils.sendPrivateMessage(participant, "Please answer this message yes or no to confirm your status.");
-        new YesNoPromptListener(participant, this::promptCallback);
+
+        PromptService.getInstance().startPromptBoolean(participant,
+            "Please answer this message yes or no to confirm your status.",
+            this::promptCallback);
       }
     }
   }
@@ -93,6 +95,7 @@ public class SchedulerService {
   private void promptCallback(User user, Boolean value) {
     participantStatus.put(user, value);
     UserUtils.sendPrivateMessage(user, "Thank you for your response!");
+    PromptService.getInstance().stopPrompt(user);
   }
 
   /*
@@ -100,7 +103,7 @@ public class SchedulerService {
    */
 
   private boolean isAdmin(User user) {
-    return user.getAsTag().equals(ADMIN);
+    return user.getAsTag().equals(BotConstants.ADMIN);
   }
 
   //Helper for stripping preceding prefix and command string from a message

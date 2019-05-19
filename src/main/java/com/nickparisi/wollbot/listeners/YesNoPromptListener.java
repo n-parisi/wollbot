@@ -1,7 +1,6 @@
 package com.nickparisi.wollbot.listeners;
 
-import com.nickparisi.wollbot.callbacks.BooleanCallback;
-import com.nickparisi.wollbot.utils.UserUtils;
+import com.nickparisi.wollbot.callbacks.IBooleanCallback;
 import net.dv8tion.jda.api.entities.ChannelType;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -12,13 +11,11 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
  */
 public class YesNoPromptListener extends ListenerAdapter {
   private User user;
-  private BooleanCallback callback;
+  private IBooleanCallback callback;
 
-  public YesNoPromptListener(User user, BooleanCallback callback) {
+  public YesNoPromptListener(User user, IBooleanCallback callback) {
     this.user = user;
     this.callback = callback;
-
-    user.getJDA().addEventListener(this);
   }
 
   @Override
@@ -28,11 +25,8 @@ public class YesNoPromptListener extends ListenerAdapter {
 
       if (messageContents.equals("yes")) {
         callback.fire(user, true);
-        user.getJDA().removeEventListener(this);
-
       } else if (messageContents.equals("no")) {
         callback.fire(user, false);
-        user.getJDA().removeEventListener(this);
       }
     }
   }

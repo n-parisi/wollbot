@@ -1,6 +1,6 @@
 package com.nickparisi.wollbot.listeners;
 
-import com.nickparisi.wollbot.commands.MessageCommand;
+import com.nickparisi.wollbot.commands.IMessageCommand;
 import com.nickparisi.wollbot.service.SchedulerService;
 import net.dv8tion.jda.api.entities.ChannelType;
 import net.dv8tion.jda.api.entities.Message;
@@ -14,7 +14,7 @@ public class SchedulerListener extends ListenerAdapter {
 
   private static final String PREFIX = "scheduler";
 
-  private Map<String, MessageCommand> commands;
+  private Map<String, IMessageCommand> commands;
   private SchedulerService service;
 
   public SchedulerListener() {

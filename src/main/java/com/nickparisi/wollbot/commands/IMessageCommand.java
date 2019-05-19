@@ -3,6 +3,6 @@ package com.nickparisi.wollbot.commands;
 import net.dv8tion.jda.api.entities.Message;
 
 @FunctionalInterface
-public interface MessageCommand {
+public interface IMessageCommand {
   void process(Message msg);
 }
