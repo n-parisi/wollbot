@@ -4,22 +4,28 @@ import com.nickparisi.wollbot.listeners.YesNoPromptListener;
 import com.nickparisi.wollbot.utils.BotConstants;
 import com.nickparisi.wollbot.utils.UserUtils;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class SchedulerService {
   private static DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd-yyyy h:mma");
 
+  //maps
   private Set<User> participants = new HashSet<>();
   private Map<User, Boolean> participantStatus = new HashMap<>();
+  private Map<User, ListenerAdapter> listeners = new HashMap<>();
+  //event
   private String event = "";
   private LocalDateTime eventDateTime;
+  //prompt
+  private MessageChannel channelToReportPrompts;
+  private Timer promptReminderTimer;
 
   /*
   Service Commands
@@ -43,18 +49,36 @@ public class SchedulerService {
   }
 
   public void addParticipants(Message message) {
-    participants.addAll(message.getMentionedUsers());
+    participants.addAll(message.getMentionedUsers().stream()
+        .filter(user -> !user.isBot()).collect(Collectors.toList()));
   }
 
   public void promptParticipants(Message message) {
     if (isAdmin(message.getAuthor())) {
+      if (promptReminderTimer != null) {
+        promptReminderTimer.cancel();
+      }
+      channelToReportPrompts = message.getChannel();
+
       for (User participant : participants) {
         participantStatus.put(participant, false);
 
-        PromptService.getInstance().startPromptBoolean(participant,
-            "Please answer this message yes or no to confirm your status.",
-            this::promptCallback);
+        ListenerAdapter listener = new YesNoPromptListener(participant, this::promptCallback);
+        message.getJDA().addEventListener(listener);
+        listeners.put(participant, listener);
+        UserUtils.sendPrivateMessage(participant, "Please answer this message yes or no to confirm your status.");
       }
+
+      TimerTask timerTask = new TimerTask() {
+        @Override
+        public void run() {
+          for (User participant : participants) {
+            UserUtils.sendPrivateMessage(participant, "Reminder: Please answer this message yes or no to confirm your status.");
+          }
+        }
+      };
+      promptReminderTimer = new Timer();
+      promptReminderTimer.scheduleAtFixedRate(timerTask, BotConstants.PROMPT_REMINDER_INTERVAL_MS, BotConstants.PROMPT_REMINDER_INTERVAL_MS);
     }
   }
 
@@ -88,6 +112,24 @@ public class SchedulerService {
     }
   }
 
+  public void reset(Message message) {
+    participants = new HashSet<>();
+    participantStatus = new HashMap<>();
+    for (Map.Entry<User, ListenerAdapter> entry : listeners.entrySet()) {
+      entry.getKey().getJDA().removeEventListener(entry.getValue()); //lol
+    }
+    listeners = new HashMap<>();
+
+    event = "";
+    eventDateTime = null;
+    channelToReportPrompts = null;
+    if (promptReminderTimer != null) {
+      promptReminderTimer.cancel();
+    }
+    promptReminderTimer = null;
+  }
+
+
   /*
   Callbacks
    */
@@ -95,7 +137,19 @@ public class SchedulerService {
   private void promptCallback(User user, Boolean value) {
     participantStatus.put(user, value);
     UserUtils.sendPrivateMessage(user, "Thank you for your response!");
-    PromptService.getInstance().stopPrompt(user);
+
+    if (listeners.containsKey(user)) {
+      ListenerAdapter listener = listeners.remove(user);
+      user.getJDA().removeEventListener(listener);
+    }
+
+    if (value == false) {
+      channelToReportPrompts.sendMessage(user.getAsMention() + " did not accept date!").queue();
+    }
+
+    if (listeners.isEmpty()) {
+      promptReminderTimer.cancel();
+    }
   }
 
   /*

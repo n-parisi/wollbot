@@ -26,6 +26,7 @@ public class SchedulerListener extends ListenerAdapter {
     commands.put("ping", service::pingParticipants);
     commands.put("new", service::newEvent);
     commands.put("prompt", service::promptParticipants);
+    commands.put("reset", service::reset);
   }
 
 
